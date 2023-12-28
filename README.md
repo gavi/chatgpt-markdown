@@ -23,19 +23,23 @@ No additional libraries are required for this script, as it only uses modules fr
 2. **Run the Script:** Use the command line to navigate to the directory containing `convert.py` and run the following command:
 
    ```bash
-   python convert.py [input_file] [output_dir]
+   python convert.py [input_file] [output_dir] [--use-date-folders]
    ```
 
    - Replace `[input_file]` with the path to your JSON file containing the conversation data.
    - Replace `[output_dir]` with the path to the directory where you want the Markdown files to be saved.
-
-   Example:
+   - Include --use-date-folders if you want to store the Markdown files in folders named by the date of the conversation in ISO format.
+   Examples:
 
    ```bash
+   # Without date-based folders
    python convert.py conversations.json output
+
+   # With date-based folders
+   python convert.py conversations.json output --use-date-folders
    ```
 
-3. **Check Output:** After running the script, the Markdown files will be saved in the specified output directory, with each file representing a conversation from the input data.
+3. **Check Output:** After running the script, the Markdown files will be saved in the specified output directory, with each file representing a conversation from the input data.If `--use-date-folders` is used, each conversation's Markdown file will be stored in a folder named after the conversation's date in ISO format (e.g., `2023-01-01`).
 
 ## File Structure
 - `convert.py`: The main script that processes the JSON data and converts it to Markdown format.
