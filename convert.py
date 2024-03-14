@@ -33,7 +33,11 @@ def main(input_file, output_dir, use_date_folders):
     with open(input_file) as f:
         data = json.loads(f.read())
         for item in data:
-            title = item["title"].replace("/","_").replace('"','')
+            # Check if title is None and assign a default value
+            title = item.get("title", "Untitled")
+            if title is None:
+                title = "Untitled"
+            title = title.replace("/","_").replace('"','')
             if title == "New chat":
                 title = "New chat " + str(int(item["create_time"]))
             root_node_id = [node_id for node_id, node in item['mapping'].items() if node['parent'] is None][0]
