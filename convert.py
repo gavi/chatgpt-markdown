@@ -4,9 +4,9 @@ import argparse
 from datetime import datetime
 
 def sanitize_filename(filename):
-    if filename is None:
-        return "Untitled"
-    
+    if filename is None or filename.strip() == "":
+        return "noname"
+        
     # Remove or replace invalid characters for filenames
     invalid_characters = '<>:"/\\|?*\n\t'
     for char in invalid_characters:
@@ -31,6 +31,15 @@ def get_conversation(node_id, mapping, list, is_first_node=True):
     for child_id in node.get('children', []):
         get_conversation(child_id, mapping, list, is_first_node=False)
 
+def generate_unique_filename(base_path, title):
+    version = 0  # Start with 0 to check for the original name first
+    title = title if title.strip() != "" else "noname"
+    file_path = os.path.join(base_path, f"{title}.md")
+    while os.path.exists(file_path):
+        version += 1
+        file_path = os.path.join(base_path, f"{title}_v{version}.md")
+    return file_path
+
 def main(input_file, output_dir, use_date_folders):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -49,9 +58,9 @@ def main(input_file, output_dir, use_date_folders):
                 date_folder = os.path.join(output_dir, date_iso)
                 if not os.path.isdir(date_folder):
                     os.makedirs(date_folder)
-                file_path = os.path.join(date_folder, f"{title}.md")
+                file_path = generate_unique_filename(date_folder, title)
             else:
-                file_path = os.path.join(output_dir, f"{title}.md")
+                file_path = generate_unique_filename(output_dir, title)
 
             print(f"Attempting to write to: {file_path}")
             with open(file_path, 'w', encoding='utf-8') as outfile:
