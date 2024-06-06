@@ -3,8 +3,15 @@ import os
 import argparse
 from datetime import datetime
 
+def sanitize_filename(filename):
+    if filename is None or filename.strip() == "":
+        return "noname"
+    invalid_characters = '<>:"/\\|?*\n\t'
+    for char in invalid_characters:
+        filename = filename.replace(char, '')
+    return filename
 
-def get_conversation(node_id, mapping, list):
+def get_conversation(node_id, mapping, list, last_author=None):
     node = mapping[node_id]
     if node.get('message') and 'content' in node['message'] and 'parts' in node['message']['content']:
         content_parts = node['message']['content']['parts']
@@ -13,47 +20,51 @@ def get_conversation(node_id, mapping, list):
             if isinstance(part, str):
                 parts_text.append(part)
             elif isinstance(part, dict):
-                # Handle the dictionary content here
-                # For example, you might want to convert it to a string or extract specific information
-                parts_text.append(str(part))  # Simple example: convert the dictionary to a string
+                parts_text.append(str(part))
         if parts_text:
             author_role = node['message']['author']['role']
-            list.append(f"## {author_role}\n {''.join(parts_text)}")
+            if author_role != "system" and author_role != last_author:
+                list.append(f"## {author_role}\n{''.join(parts_text)}")
+            elif author_role != "system":
+                list.append(f"{''.join(parts_text)}")
+            last_author = author_role
 
     for child_id in node.get('children', []):
-        get_conversation(child_id, mapping, list)
+        get_conversation(child_id, mapping, list, last_author)
 
-
+def generate_unique_filename(base_path, title):
+    version = 0
+    title = title if title.strip() != "" else "noname"
+    file_path = os.path.join(base_path, f"{title}.md")
+    while os.path.exists(file_path):
+        version += 1
+        file_path = os.path.join(base_path, f"{title}_v{version}.md")
+    return file_path
 
 def main(input_file, output_dir, use_date_folders):
-    # Check if the directory exists
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    with open(input_file) as f:
+    with open(input_file, 'r', encoding='utf-8') as f:
         data = json.loads(f.read())
         for item in data:
-            # Check if title is None and assign a default value
-            title = item.get("title", "Untitled")
-            if title is None:
-                title = "Untitled"
-            title = title.replace("/","_").replace('"','')
-            if title == "New chat":
-                title = "New chat " + str(int(item["create_time"]))
-            root_node_id = [node_id for node_id, node in item['mapping'].items() if node['parent'] is None][0]
+            title = item.get("title")
+            title = sanitize_filename(title)
+            root_node_id = next(node_id for node_id, node in item['mapping'].items() if node.get('parent') is None)
             list = []
             get_conversation(root_node_id, item['mapping'], list)
 
-            # Handle the date-based folder structure
-            date_folder = ''
             if use_date_folders:
-                # Convert create_time to datetime and then to ISO format
                 date_iso = datetime.fromtimestamp(item["create_time"]).date().isoformat()
-                date_folder = f"{output_dir}/{date_iso}"
+                date_folder = os.path.join(output_dir, date_iso)
                 if not os.path.isdir(date_folder):
                     os.makedirs(date_folder)
+                file_path = generate_unique_filename(date_folder, title)
+            else:
+                file_path = generate_unique_filename(output_dir, title)
 
-            with open(f'{date_folder if use_date_folders else output_dir}/{title}.md', 'w') as outfile:
+            print(f"Attempting to write to: {file_path}")
+            with open(file_path, 'w', encoding='utf-8') as outfile:
                 outfile.write('\n'.join(list))
 
 if __name__ == '__main__':
