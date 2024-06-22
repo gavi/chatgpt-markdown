@@ -32,13 +32,19 @@ def get_conversation(node_id, mapping, list, last_author=None):
     for child_id in node.get('children', []):
         get_conversation(child_id, mapping, list, last_author)
 
-def generate_unique_filename(base_path, title):
-    version = 0
+def generate_unique_filename(base_path, title, existing_titles):
     title = title if title.strip() != "" else "noname"
-    file_path = os.path.join(base_path, f"{title}.md")
-    while os.path.exists(file_path):
-        version += 1
+    if title not in existing_titles:
+        existing_titles[title] = 0
+    else:
+        existing_titles[title] += 1
+
+    version = existing_titles[title]
+    if version == 0:
+        file_path = os.path.join(base_path, f"{title}.md")
+    else:
         file_path = os.path.join(base_path, f"{title}_v{version}.md")
+    
     return file_path
 
 def main(input_file, output_dir, use_date_folders):
@@ -47,6 +53,7 @@ def main(input_file, output_dir, use_date_folders):
 
     with open(input_file, 'r', encoding='utf-8') as f:
         data = json.loads(f.read())
+        existing_titles = {}
         for item in data:
             title = item.get("title")
             title = sanitize_filename(title)
@@ -59,9 +66,9 @@ def main(input_file, output_dir, use_date_folders):
                 date_folder = os.path.join(output_dir, date_iso)
                 if not os.path.isdir(date_folder):
                     os.makedirs(date_folder)
-                file_path = generate_unique_filename(date_folder, title)
+                file_path = generate_unique_filename(date_folder, title, existing_titles)
             else:
-                file_path = generate_unique_filename(output_dir, title)
+                file_path = generate_unique_filename(output_dir, title, existing_titles)
 
             print(f"Attempting to write to: {file_path}")
             with open(file_path, 'w', encoding='utf-8') as outfile:
